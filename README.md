@@ -10,8 +10,8 @@ A replay of the 2026 Rhine low-water season, built from real data.
 
 | Part | Status |
 |---|---|
-| Kaub daily water levels, 20 Jun to 24 Oct 2026 | Real (Pegelonline, 15-minute readings) |
-| Kaub daily values 2021 to 2025 | Real (BfG yearbook) |
+| Kaub daily water levels, 20 Jun to 24 Oct 2026 | Real (Pegelonline, 15-minute readings) in `data/kaub_2026_daily.csv` |
+| Kaub daily values 2021 to 2025 | Real (BfG yearbook). Used only for the record-low check. `scripts/parse_bafg.py` parses it. |
 | Maersk, Hapag-Lloyd, Contargo, CMA CGM terms | Real, read from carrier notices and trade press, linked in the page |
 | The ten shipments | Made up |
 | Rail slots per week (default 4) | An assumption you can change on the page |
@@ -22,12 +22,12 @@ Not connected to any company system. Not a forecast. Carrier pages change, so ch
 
 - Rules were extracted from the notices by an AI model (Claude), each with its source. The page shows three versions of Maersk's price table (14 Jul, 12 Aug, 8 Oct) side by side.
 - The decisions on the page come from plain code, not a live AI call. The page needs no network connection.
+- `index.html` is one self-contained file. The river data is embedded in it.
 
-## Rebuild
+## Refresh the river data
 
 ```
-python3 scripts/fetch_2026.py data/kaub_2026_daily.csv   # re-fetch river data
-python3 scripts/build.py                                  # template.html -> index.html
+python3 scripts/fetch_2026.py data/kaub_2026_daily.csv
 ```
 
 ## Known limits
