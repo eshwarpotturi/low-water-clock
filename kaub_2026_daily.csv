@@ -1,4 +1,4 @@
-date,min_cm,mean_cm,last_cm,n_readings
+data/date,min_cm,mean_cm,last_cm,n_readings
 2026-06-20,103,105.8,104,96
 2026-06-21,103,104.4,103,96
 2026-06-22,103,105.7,106,96
