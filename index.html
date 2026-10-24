@@ -10,11 +10,13 @@
   --bg:#f6f7f9;--panel:#ffffff;--ink:#14181f;--muted:#4b5563;--line:#d5dae1;
   --good:#1a7f37;--goodbg:#dcf3e3;--bad:#c62828;--badbg:#fde3e3;--mid:#a86400;--midbg:#fdf0d0;
   --accent:#1f4e9c;--accentbg:#e3ecfa;--river:#1f4e9c;--shade:rgba(198,40,40,.08);
+  --sky1:#bfe3f7;--sky2:#eaf6fc;--hill:#9db89a;--bank:#7c9a5b;--bankd:#5f7c44;--bed:#c9b48a;--w1:#4aa3c9;--w2:#1f6f9c;--hull:#37474f;
 }
 :root[data-theme="dark"]{
   --bg:#0f1318;--panel:#171d25;--ink:#eef1f5;--muted:#aab3c0;--line:#2c3541;
   --good:#5bd17f;--goodbg:#143222;--bad:#ff7b72;--badbg:#3b1717;--mid:#f0b24a;--midbg:#3a2c0f;
   --accent:#7fb0ff;--accentbg:#1a2a44;--river:#7fb0ff;--shade:rgba(255,123,114,.10);
+  --sky1:#16243a;--sky2:#24385a;--hill:#2c4a3a;--bank:#35502f;--bankd:#27401f;--bed:#6b5d41;--w1:#2b6f95;--w2:#123a58;--hull:#9aa8b0;
 }
 *{box-sizing:border-box}
 html{font-size:18px}
@@ -23,7 +25,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .wrap{max-width:1560px;margin:0 auto;padding:12px 16px 18px}
 header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px}
 h1{font-size:1.15rem;margin:0;color:var(--muted);font-weight:600;letter-spacing:.02em}
-.msg{font-size:1.9rem;margin:2px 0 0;font-weight:700;letter-spacing:-.01em}
+.msg{font-size:1.7rem;margin:2px 0 0;font-weight:700;letter-spacing:-.01em}
 .msg b{color:var(--bad)}
 .sub{color:var(--muted);font-size:.88rem;margin-top:2px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
@@ -40,7 +42,15 @@ h1{font-size:1.15rem;margin:0;color:var(--muted);font-weight:600;letter-spacing:
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .panel h2{font-size:1.05rem;margin:0 0 6px}
 .panel h2 small{font-weight:400;color:var(--muted);font-size:.8rem;margin-left:6px}
-.time{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin-bottom:10px}
+.topgrid{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px}
+.time{display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:4px;align-items:center}
+.legend i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.ctn{cursor:pointer}.ctn:hover{filter:brightness(1.15)}
+@keyframes wv{from{transform:translateX(0)}to{transform:translateX(-40px)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.wave{animation:wv 3s linear infinite}.bob{animation:bob 2.6s ease-in-out infinite}
+.cno{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;letter-spacing:.02em}
 .time .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .datebig{font-size:1.25rem;font-weight:700;min-width:7.2ch}
 .lvl{font-size:1.25rem;font-weight:700}
@@ -50,7 +60,7 @@ svg{width:100%;height:auto;display:block}
 .queue{max-height:460px;overflow:auto;padding-right:4px}
 .item{display:block;width:100%;text-align:left;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:7px 10px;margin-bottom:7px}
 .item.sel{border-color:var(--accent);background:var(--accentbg)}
-.item .top{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+.item .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-weight:700}
 .item .why{font-size:.84rem;color:var(--muted);margin-top:2px}
 .chip{font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;display:inline-block}
 .c-bad{background:var(--badbg);color:var(--bad)}.c-mid{background:var(--midbg);color:var(--mid)}.c-good{background:var(--goodbg);color:var(--good)}.c-acc{background:var(--accentbg);color:var(--accent)}
@@ -96,7 +106,7 @@ footer a{color:var(--accent)}
 body.guiding{padding-bottom:230px}
 body.guiding .modal{align-items:flex-start}
 body.guiding .sheet{max-height:calc(100vh - 270px)}
-@media (max-width:1100px){.main,.bottom{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.time{grid-template-columns:1fr}}
+@media (max-width:1100px){.main,.bottom,.topgrid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.time{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -117,18 +127,23 @@ body.guiding .sheet{max-height:calc(100vh - 270px)}
 
 <div class="kpis" id="kpis"></div>
 
-<section class="panel time">
-  <div>
-    <div class="row">
+<div class="topgrid">
+  <section class="panel" id="scene">
+    <h2>The river and the shipments <small>Each box is one shipment. Click one waiting on the left bank.</small></h2>
+    <div id="sceneBox"></div>
+    <div class="legend"><span><i style="background:#42b0d5"></i>Maersk</span><span><i style="background:#f28c28"></i>Hapag-Lloyd</span><span><i style="background:#c8102e"></i>CMA CGM</span><span><i style="background:#6b7280"></i>Contargo</span><span>Red edge: barge closed. Amber edge: barge at risk.</span></div>
+  </section>
+  <section class="panel time" id="timeP">
+    <div class="row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span class="datebig" id="dateOut"></span>
-      <span class="lvl" id="lvlOut"></span>
       <button class="btn primary" id="bPlay">Replay the season</button>
       <button class="btn" id="bNow">Back to 24 Oct</button>
     </div>
+    <div class="lvl" id="lvlOut" style="margin:4px 0"></div>
     <div id="chart"></div>
-  </div>
-  <div class="sub" style="max-width:300px">Click the river to move to another day. Numbered markers are carrier notices the system read. The queue and the rules on file change with the date.</div>
-</section>
+    <div class="sub">Click the river line to move to another day. Numbered markers are carrier notices the system read.</div>
+  </section>
+</div>
 
 <div class="main">
   <section class="panel">
@@ -257,6 +272,11 @@ const SHIPS=(()=>{
   return out;
 })();
 
+const CCOL={maersk:'#42b0d5',hapag:'#f28c28',cma:'#c8102e',merchant:'#6b7280'};
+const CPRE={maersk:'MSKU',hapag:'HLXU',cma:'CMAU',merchant:'CNTU'};
+SHIPS.forEach((s,i)=>{ s.no=CPRE[s.carrier]+' '+String(1000000+((i+1)*48271)%8999999).slice(0,6)+' '+((i*7)%10); s.col=CCOL[s.carrier]; });
+function ctnIcon(col,w){ w=w||44; return '<svg width="'+w+'" height="'+(w*.42)+'" viewBox="0 0 44 18" style="flex:none;width:'+w+'px;height:'+(w*.42)+'px"><rect x="1" y="1" width="42" height="16" rx="2" fill="'+col+'" stroke="rgba(0,0,0,.45)"/>'+[8,14,20,26,32,38].map(x=>'<line x1="'+x+'" y1="3" x2="'+x+'" y2="15" stroke="rgba(0,0,0,.28)"/>').join('')+'</svg>'; }
+
 /* ---------- State ---------- */
 const state={d:LAST,sel:null,theme:'light',playing:false,decisions:{},log:[],timer:null};
 const levelAt=d=>d===LAST?DATA.latest.value:Math.round(G[d][1]);
@@ -328,7 +348,7 @@ function renderQueue(c){
   if(!c.queue.length){ $('#queue').innerHTML='<div class="empty"><b>Nothing needs you</b>Every shipment is handled by a rule.</div>'; return; }
   $('#queue').innerHTML=c.queue.map(q=>{
     const s=q.s;
-    return '<button class="item'+(state.sel===s.id?' sel':'')+'" data-id="'+s.id+'"><div class="top"><span>'+s.id+' &middot; '+s.from+' → '+s.to+'</span>'+chipFor(q)+'</div><div class="why">'+reasonText(q)+'. System suggests: <b>'+ACT[q.rec]+'</b></div></button>';
+    return '<button class="item'+(state.sel===s.id?' sel':'')+'" data-id="'+s.id+'"><div class="top"><span style="display:flex;gap:8px;align-items:center">'+ctnIcon(s.col,44)+'<span>'+s.from+' → '+s.to+'<br><span class="cno" style="font-weight:400;color:var(--muted)">'+s.no+' &middot; '+s.box+'ft</span></span></span>'+chipFor(q)+'</div><div class="why">'+reasonText(q)+'. System suggests: <b>'+ACT[q.rec]+'</b></div></button>';
   }).join('');
   document.querySelectorAll('.item').forEach(b=>b.onclick=()=>{ state.sel=b.dataset.id; render(); });
 }
@@ -353,7 +373,7 @@ function renderDecide(c){
   }
   const acts=['rail','truck','hold','escalate'].filter(a=>a!==q.rec).map(a=>'<button class="btn" data-a="'+a+'"'+(a==='rail'&&!railOk?' disabled title="No rail slots left this week"':'')+'>'+ACT[a]+'</button>').join('');
   el.innerHTML=
-   '<h3>'+s.id+' &middot; '+s.from+' → '+s.to+'</h3>'+
+   '<div style="display:flex;gap:12px;align-items:center">'+ctnIcon(s.col,92)+'<div><h3>'+s.from+' → '+s.to+'</h3><div class="cno">'+s.no+' &middot; '+s.id+'</div></div></div>'+
    '<div class="lane">'+s.box+'ft box &middot; '+s.contract+' &middot; '+car.name+' &middot; cargo: medical devices (made-up example)</div>'+
    '<p style="margin:0"><b>Why you:</b> '+why+'</p>'+
    '<div class="facts">'+facts+'</div>'+
@@ -390,7 +410,7 @@ const EVENTS=[
  {n:5,d:'2026-10-08',title:'8 Oct: Maersk revises its ladder',src:'maerskOct',text:'Container News reports a revised Maersk ladder. The Kaub price below 81 cm for a 20ft box is now €345, up from €195.',read:'The system compared v3 with v2 and flagged 10 changed tiers, 2 new tiers and 2 entries that look like errors.'}
 ];
 function renderChart(){
-  const W=1000,H=120,L=34,R=8,T=14,B=18,n=G.length, ymin=-10,ymax=130;
+  const W=1000,H=190,L=34,R=8,T=18,B=22,n=G.length, ymin=-10,ymax=130;
   const x=i=>L+(W-L-R)*i/(n-1), y=v=>T+(H-T-B)*(1-(v-ymin)/(ymax-ymin));
   let s='<svg viewBox="0 0 '+W+' '+H+'" id="svg" role="img" aria-label="Kaub level by day">';
   s+='<rect x="'+L+'" y="'+y(81)+'" width="'+(W-L-R)+'" height="'+(y(ymin)-y(81))+'" fill="var(--shade)"/>';
@@ -413,9 +433,63 @@ function renderChart(){
   });
   svg.querySelectorAll('.ev').forEach(g=>g.addEventListener('click',()=>openEvent(+g.dataset.n,false)));
 }
+
+function renderScene(c){
+  const L=c.L, ys=v=>225-(Math.max(-10,Math.min(140,v))+10)*120/140, sy=ys(L);
+  const bedAt=x=>(x>440&&x<580)?215:240;
+  let o='<svg viewBox="0 0 1000 255" style="width:100%;height:auto;display:block;border-radius:8px" role="img" aria-label="River with shipments">';
+  o+='<defs><linearGradient id="gsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sky1)"/><stop offset="1" style="stop-color:var(--sky2)"/></linearGradient><linearGradient id="gw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--w1)"/><stop offset="1" style="stop-color:var(--w2)"/></linearGradient></defs>';
+  o+='<rect width="1000" height="255" fill="url(#gsky)"/>';
+  o+='<path d="M0,130 Q120,80 250,120 T520,110 T800,115 T1000,100 L1000,255 L0,255Z" fill="var(--hill)" opacity=".55"/>';
+  // water
+  o+='<rect x="230" y="'+sy+'" width="560" height="'+(250-sy)+'" fill="url(#gw)"/>';
+  o+='<g clip-path="url(#cw)"><clipPath id="cw"><rect x="230" y="'+(sy-6)+'" width="560" height="14"/></clipPath><path class="wave" d="'+(()=>{let d='M190,'+sy;for(let i=0;i<20;i++){d+=' q10,-5 20,0 t20,0';}return d;})()+'" fill="none" stroke="rgba(255,255,255,.65)" stroke-width="2"/></g>';
+  // river bed with sandbar
+  o+='<path d="M230,255 L230,240 L440,240 Q450,215 480,215 L540,215 Q570,215 580,240 L790,240 L790,255Z" fill="var(--bed)"/>';
+  // gauge staff
+  o+='<rect x="288" y="'+ys(130)+'" width="9" height="'+(240-ys(130))+'" fill="#f4f1e8" stroke="#555" stroke-width=".6"/>';
+  for(let v=0;v<=120;v+=20){ o+='<line x1="288" x2="297" y1="'+ys(v)+'" y2="'+ys(v)+'" stroke="#222" stroke-width="1.3"/><text x="301" y="'+(ys(v)+3)+'" font-size="11" fill="#fff" stroke="rgba(0,0,0,.5)" stroke-width="2.5" paint-order="stroke">'+v+'</text>'; }
+  o+='<line x1="284" x2="340" y1="'+ys(81)+'" y2="'+ys(81)+'" stroke="#e53935" stroke-width="2" stroke-dasharray="4 3"/><text x="342" y="'+(ys(81)+3)+'" font-size="12" font-weight="700" fill="#e53935" stroke="rgba(255,255,255,.7)" stroke-width="2.5" paint-order="stroke">81 cm: no guarantee below</text>';
+  o+='<path d="M278,'+(sy-5)+' L288,'+sy+' L278,'+(sy+5)+'Z" fill="#fff" stroke="#000" stroke-width="1"/><text x="274" y="'+(sy+4)+'" text-anchor="end" font-size="15" font-weight="800" fill="#fff" stroke="rgba(0,0,0,.65)" stroke-width="3" paint-order="stroke">'+L+' cm</text>';
+  // banks
+  o+='<path d="M0,92 L230,92 L292,240 L292,255 L0,255Z" fill="var(--bank)"/><path d="M0,92 L230,92 L236,106 L0,106Z" fill="var(--bankd)" opacity=".6"/>';
+  o+='<path d="M1000,92 L790,92 L728,240 L728,255 L1000,255Z" fill="var(--bank)"/><path d="M1000,92 L790,92 L784,106 L1000,106Z" fill="var(--bankd)" opacity=".6"/>';
+  // mask water edges under banks (draw bank over); water rect is wider than channel so re-draw banks above
+  // barges
+  const autos=c.auto.slice(0,36), bx=[325,455,585];
+  const grounded=[sy+8>bedAt(bx[0]+60)-1,sy+8>bedAt(bx[1]+60)-1,sy+8>bedAt(bx[2]+60)-1];
+  bx.forEach((x,k)=>{
+    const hb=Math.min(sy+8,bedAt(x+60)-1), g=grounded[k];
+    o+='<g class="'+(g?'':'bob')+'" transform="'+(g?'rotate(-3 '+(x+60)+' '+hb+')':'')+'">';
+    const items=autos.filter((_,i)=>i%3===k).slice(0,12);
+    items.forEach((a,i)=>{ const col=i%6,row=Math.floor(i/6); o+='<g class="ctn" data-id="'+a.s.id+'"><title>'+a.s.no+', '+a.s.from+' to '+a.s.to+'</title><rect x="'+(x+6+col*18.2)+'" y="'+(hb-12-11*(row+1))+'" width="17.2" height="10" fill="'+a.s.col+'" stroke="'+(a.act==='watch'?'#f0b24a':'rgba(0,0,0,.45)')+'" stroke-width="'+(a.act==='watch'?1.6:.7)+'"/><line x1="'+(x+6+col*18.2+6)+'" x2="'+(x+6+col*18.2+6)+'" y1="'+(hb-12-11*(row+1)+1)+'" y2="'+(hb-12-11*(row+1)+8)+'" stroke="rgba(0,0,0,.25)"/></g>'; });
+    o+='<path d="M'+x+','+(hb-12)+' L'+(x+120)+','+(hb-12)+' L'+(x+110)+','+hb+' L'+(x+10)+','+hb+'Z" fill="var(--hull)" stroke="#000" stroke-opacity=".4"/><rect x="'+x+'" y="'+(hb-14)+'" width="120" height="3" fill="#b71c1c"/>';
+    o+='</g>';
+    if(items.length||true){ const tag=L>=81?['Guaranteed','#1a7f37']:['Not guaranteed','#c62828']; o+='<text x="'+(x+60)+'" y="'+(sy-72)+'" text-anchor="middle" font-size="12" font-weight="700" fill="'+tag[1]+'" stroke="rgba(255,255,255,.85)" stroke-width="3" paint-order="stroke">'+(g?'Aground':tag[0])+'</text>'; }
+  });
+  o+='<rect x="230" y="'+(sy+1)+'" width="560" height="'+Math.max(0,240-sy-1)+'" fill="var(--w1)" opacity=".28"/>';
+  o+='<path d="M0,92 L230,92 L292,240 L292,255 L0,255Z" fill="var(--bank)"/><path d="M1000,92 L790,92 L728,240 L728,255 L1000,255Z" fill="var(--bank)"/>';
+  // left bank: exceptions
+  const ex=c.queue.slice(0,28);
+  ex.forEach((q,i)=>{ const col=i%7,row=Math.floor(i/7), x=8+col*31, y=92-12*(row+1)-1; const st=q.reason==='closed'?'#e53935':q.reason==='norule'?'#9e9e9e':'#f0b24a'; const sel=state.sel===q.s.id;
+    o+='<g class="ctn" data-id="'+q.s.id+'"><title>'+q.s.no+', '+q.s.from+' to '+q.s.to+'</title><rect x="'+x+'" y="'+y+'" width="29" height="11" fill="'+q.s.col+'" stroke="'+(sel?'#fff':st)+'" stroke-width="'+(sel?3:1.8)+'"/>'+(sel?'<rect x="'+(x-2)+'" y="'+(y-2)+'" width="33" height="15" fill="none" stroke="var(--accent)" stroke-width="2"/>':'')+'<line x1="'+(x+7)+'" x2="'+(x+7)+'" y1="'+(y+1)+'" y2="'+(y+10)+'" stroke="rgba(0,0,0,.25)"/><line x1="'+(x+14)+'" x2="'+(x+14)+'" y1="'+(y+1)+'" y2="'+(y+10)+'" stroke="rgba(0,0,0,.25)"/><line x1="'+(x+21)+'" x2="'+(x+21)+'" y1="'+(y+1)+'" y2="'+(y+10)+'" stroke="rgba(0,0,0,.25)"/></g>'; });
+  o+='<text x="8" y="'+(92-12*Math.max(1,Math.ceil(ex.length/7))-8)+'" font-size="15" font-weight="800" fill="#fff" stroke="rgba(0,0,0,.6)" stroke-width="3.5" paint-order="stroke">Waiting for a person: '+c.queue.length+(c.queue.length>28?' (28 shown)':'')+'</text>';
+  o+='<text x="8" y="126" font-size="12" fill="#fff" stroke="rgba(0,0,0,.5)" stroke-width="2.5" paint-order="stroke">Quay</text>';
+  // right bank: rail
+  const w=weekOf(state.d), railDone=[]; for(const k in state.decisions){ const d=state.decisions[k]; if(d.action==='rail'&&weekOf(d.day)===w){ railDone.push(SHIPS.find(v=>v.id===k)); } }
+  o+='<line x1="792" x2="1000" y1="93" y2="93" stroke="#333" stroke-width="2"/>';
+  for(let i=0;i<RAIL_CAP;i++){ const x=800+i*50, sh=railDone[i]; o+='<rect x="'+x+'" y="84" width="46" height="7" fill="#455a64" stroke="#000" stroke-opacity=".4"/><circle cx="'+(x+9)+'" cy="93" r="3" fill="#222"/><circle cx="'+(x+37)+'" cy="93" r="3" fill="#222"/>'; if(sh){ o+='<rect x="'+(x+3)+'" y="72" width="40" height="12" fill="'+sh.col+'" stroke="rgba(0,0,0,.5)"/>'; } else { o+='<rect x="'+(x+3)+'" y="72" width="40" height="12" fill="none" stroke="#fff" stroke-dasharray="3 3" opacity=".8"/>'; } }
+  o+='<text x="800" y="60" font-size="15" font-weight="800" fill="#fff" stroke="rgba(0,0,0,.6)" stroke-width="3" paint-order="stroke">Rail this week: '+railDone.length+' of '+RAIL_CAP+' slots used</text>';
+  o+='<text x="800" y="126" font-size="12" fill="#fff" stroke="rgba(0,0,0,.5)" stroke-width="2.5" paint-order="stroke">Rail slots are an assumption</text>';
+  o+='<text x="392" y="248" font-size="14" font-weight="700" fill="#fff" stroke="rgba(0,0,0,.6)" stroke-width="3" paint-order="stroke" text-anchor="middle">'+c.auto.length+' shipments handled by a rule, on barges</text>';
+  o+='</svg>';
+  $('#sceneBox').innerHTML=o;
+  document.querySelectorAll('#sceneBox .ctn').forEach(g=>g.onclick=()=>{ const id=g.dataset.id; if(c.queue.find(q=>q.s.id===id)){ state.sel=id; render(); } });
+}
+
 function render(){
   const c=compute(state.d);
-  renderHead(c); renderKpis(c); renderChart(); renderQueue(c); renderDecide(c); renderRules(); renderLog();
+  renderHead(c); renderKpis(c); renderScene(c); renderChart(); renderQueue(c); renderDecide(c); renderRules(); renderLog();
 }
 
 /* ---------- Pop-ups ---------- */
@@ -478,7 +552,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
 /* ---------- Guided run ---------- */
 const G_STEPS=[
- {t:'The river falls',x:'Watch the Rhine level at Kaub drop. Below 81 cm, carriers stop guaranteeing barges, and shipments start needing a person.',run(){gAnim();},hl:'#chart'},
+ {t:'The river falls',x:'Watch the Rhine level at Kaub drop. Below 81 cm, carriers stop guaranteeing barges, and shipments start needing a person.',run(){gAnim();},hl:'#scene'},
  {t:'Each carrier notice becomes a rule',x:'Maersk, Hapag-Lloyd and others publish price ladders tied to this level. The AI reads each notice into a versioned rule. On 8 October Maersk raised its price below 81 cm by 77%.',run(){gStop();state.d=D_MOCT;state.sel=null;},hl:'#rules'},
  {t:'Most shipments need no one',x:'At 24 cm, 27 shipments are still handled by a rule and logged. Only 26 reach a person.',run(){gStop();state.d=LAST;state.decisions={};state.log=[];state.sel=null;},hl:'#kpis'},
  {t:'A person decides, with the facts',x:'Each case shows why it is here, the surcharge, the rule version and the carrier\u2019s words. Approving it writes the log.',run(){gStop();state.d=LAST;const c=compute(state.d);if(c.queue.length){state.sel=c.queue[0].s.id;const q=c.queue[0];if(q.rec!=='check'&&!state.decisions[q.s.id])decide(q,q.rec);}},hl:'#decide'}
