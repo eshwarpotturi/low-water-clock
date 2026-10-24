@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Low Water Clock</title>
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#ffffff;--ink:#14181f;--muted:#4b5563;--line:#d5dae1;
+  --good:#1a7f37;--goodbg:#dcf3e3;--bad:#c62828;--badbg:#fde3e3;--mid:#a86400;--midbg:#fdf0d0;
+  --accent:#1f4e9c;--river:#1f4e9c;--shade:rgba(198,40,40,.08);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318;--panel:#171d25;--ink:#eef1f5;--muted:#aab3c0;--line:#2c3541;
+  --good:#5bd17f;--goodbg:#143222;--bad:#ff7b72;--badbg:#3b1717;--mid:#f0b24a;--midbg:#3a2c0f;
+  --accent:#7fb0ff;--river:#7fb0ff;--shade:rgba(255,123,114,.10);
+}
+*{box-sizing:border-box}
+html{font-size:18px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.35}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:1500px;margin:0 auto;padding:12px 16px 20px}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px}
+h1{font-size:1.9rem;margin:0;letter-spacing:-.01em}
+.msg{font-size:1.25rem;margin:2px 0 0;font-weight:600}
+.sub{color:var(--muted);font-size:.9rem;margin-top:2px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:.9rem}
+.btn:hover{border-color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:8px 0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.kpi b{display:block;font-size:1.9rem;line-height:1.1}
+.kpi span{color:var(--muted);font-size:.85rem}
+.kpi.bad b{color:var(--bad)}.kpi.mid b{color:var(--mid)}
+.control{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px}
+.control label{font-weight:600}
+.level{font-size:1.6rem;font-weight:700;min-width:5.2ch;text-align:right}
+input[type=range]{flex:1;min-width:260px;accent-color:var(--accent)}
+.stepper{display:inline-flex;align-items:center;gap:6px}
+.stepper button{width:30px;height:30px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-size:1.1rem}
+.stepper b{min-width:1.6ch;text-align:center;font-size:1.2rem}
+.grid{display:grid;grid-template-columns:1.25fr 1fr;gap:10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.panel h2{font-size:1.05rem;margin:0 0 6px}
+.panel h2 small{font-weight:400;color:var(--muted);font-size:.8rem;margin-left:6px}
+svg{width:100%;height:auto;display:block}
+.lbl{paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{border:2px solid var(--line);border-radius:10px;padding:8px 10px;text-align:left;background:var(--panel);display:block;width:100%}
+.card h3{margin:0;font-size:1.05rem;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.chip{font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.ok{border-color:var(--good)}.ok .chip{background:var(--goodbg);color:var(--good)}
+.risk{border-color:var(--mid)}.risk .chip{background:var(--midbg);color:var(--mid)}
+.no{border-color:var(--bad)}.no .chip{background:var(--badbg);color:var(--bad)}
+.card p{margin:4px 0 0;font-size:.88rem}
+.card .fee{font-weight:700;font-size:.95rem}
+table{border-collapse:collapse;width:100%}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:.88rem;vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+tr.row{cursor:pointer}tr.row:hover{background:var(--bg)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.d-ok{background:var(--good)}.d-risk{background:var(--mid)}.d-no{background:var(--bad)}
+.rec{font-weight:700}
+.rec.rail{color:var(--accent)}.rec.barge{color:var(--good)}.rec.truck{color:var(--mid)}.rec.hold{color:var(--bad)}
+.insight{margin-top:8px;padding:8px 12px;border-radius:10px;background:var(--midbg);border:1px solid var(--mid);font-size:.95rem}
+footer{margin-top:10px;color:var(--muted);font-size:.8rem}
+footer a{color:var(--accent)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal.open{display:flex}
+.sheet{background:var(--panel);color:var(--ink);border-radius:12px;max-width:820px;width:100%;max-height:88vh;overflow:auto;padding:16px 18px;border:1px solid var(--line)}
+.sheet h2{margin:0 0 6px;font-size:1.3rem}
+.sheet h3{font-size:1rem;margin:12px 0 4px}
+.sheet p,.sheet li{font-size:.95rem}
+.sheet a{color:var(--accent)}
+.sheet .close{float:right}
+.q{border-left:4px solid var(--line);padding:2px 10px;margin:6px 0;color:var(--muted)}
+.ch{background:var(--badbg);font-weight:700}
+.tag{font-size:.72rem;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted);margin-left:4px}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Low Water Clock</h1>
+    <p class="msg" id="msg"></p>
+    <div class="sub">Rhine, Kaub gauge, 20 June to 24 October 2026. Real river and carrier data. Shipments are made up.</div>
+  </div>
+  <div class="tools">
+    <button class="btn" id="bBuilt">How this was built</button>
+    <button class="btn" id="bDiff">Rule changes</button>
+    <button class="btn" id="bTheme">Dark mode</button>
+  </div>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="control">
+  <label for="lvl">Kaub level</label>
+  <span class="level" id="lvlOut"></span>
+  <input id="lvl" type="range" min="-10" max="160" step="1">
+  <button class="btn" id="bToday">Latest reading</button>
+  <span class="stepper" title="Assumption you can change">
+    <span>Rail slots this week</span>
+    <button id="slotMinus" aria-label="fewer rail slots">−</button><b id="slotN"></b><button id="slotPlus" aria-label="more rail slots">+</button>
+  </span>
+</div>
+
+<div class="grid">
+  <section class="panel">
+    <h2>The river <small>Click a day to set the level. Click a numbered marker for the notice.</small></h2>
+    <div id="chart"></div>
+  </section>
+  <section class="panel">
+    <h2>Same river, four answers <small>Click a card for the source</small></h2>
+    <div class="cards" id="cards"></div>
+  </section>
+</div>
+
+<section class="panel" style="margin-top:10px">
+  <h2>Ten example shipments <small>Made up. Click a row to see why.</small></h2>
+  <table>
+    <thead><tr><th>Shipment</th><th>Route</th><th>Box</th><th>Contract</th><th>Needed in</th><th>Barge today</th><th>Recommendation</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="insight" id="insight"></div>
+</section>
+
+<footer>
+  Gauge: <a href="https://pegelonline.wsv.de/">Pegelonline</a> (WSV), station Kaub 25700100, and the <a href="https://dgj-daten.bafg.de/Rhein/Kaub/25700100_WQ.pdf">BfG yearbook</a>.
+  Carrier terms: see "How this was built". Not connected to any company system. Not a forecast.
+</footer>
+</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const DATA = {"gauge": [["2026-06-20", 105.8, 103], ["2026-06-21", 104.4, 103], ["2026-06-22", 105.7, 103], ["2026-06-23", 104.2, 102], ["2026-06-24", 97.2, 90], ["2026-06-25", 86.8, 85], ["2026-06-26", 83.9, 81], ["2026-06-27", 81.3, 79], ["2026-06-28", 80.3, 75], ["2026-06-29", 80.4, 75], ["2026-06-30", 86.6, 81], ["2026-07-01", 91.6, 85], ["2026-07-02", 102.2, 99], ["2026-07-03", 110.3, 106], ["2026-07-04", 120.9, 116], ["2026-07-05", 116.9, 111], ["2026-07-06", 107.7, 104], ["2026-07-07", 99.4, 91], ["2026-07-08", 85.5, 81], ["2026-07-09", 78.0, 73], ["2026-07-10", 70.6, 67], ["2026-07-11", 61.7, 57], ["2026-07-12", 57.7, 55], ["2026-07-13", 53.6, 51], ["2026-07-14", 46.4, 43], ["2026-07-15", 41.7, 40], ["2026-07-16", 45.0, 44], ["2026-07-17", 53.9, 48], ["2026-07-18", 66.7, 56], ["2026-07-19", 79.4, 77], ["2026-07-20", 85.3, 81], ["2026-07-21", 82.8, 79], ["2026-07-22", 72.0, 64], ["2026-07-23", 60.5, 56], ["2026-07-24", 47.9, 41], ["2026-07-25", 41.0, 39], ["2026-07-26", 38.2, 36], ["2026-07-27", 33.3, 31], ["2026-07-28", 28.8, 27], ["2026-07-29", 28.6, 27], ["2026-07-30", 28.4, 25], ["2026-07-31", 27.0, 25], ["2026-08-01", 29.8, 27], ["2026-08-02", 28.4, 27], ["2026-08-03", 26.7, 22], ["2026-08-04", 25.1, 21], ["2026-08-05", 19.9, 17], ["2026-08-06", 20.6, 19], ["2026-08-07", 24.3, 23], ["2026-08-08", 25.7, 24], ["2026-08-09", 20.8, 19], ["2026-08-10", 16.4, 15], ["2026-08-11", 14.5, 13], ["2026-08-12", 11.3, 10], ["2026-08-13", 11.9, 10], ["2026-08-14", 7.8, 6], ["2026-08-15", 8.1, 6], ["2026-08-16", 6.6, 6], ["2026-08-17", 6.6, 5], ["2026-08-18", 12.2, 9], ["2026-08-19", 14.4, 11], ["2026-08-20", 35.9, 25], ["2026-08-21", 44.5, 41], ["2026-08-22", 36.8, 34], ["2026-08-23", 45.4, 38], ["2026-08-24", 68.9, 53], ["2026-08-25", 71.6, 67], ["2026-08-26", 65.2, 63], ["2026-08-27", 59.7, 57], ["2026-08-28", 60.8, 59], ["2026-08-29", 71.1, 63], ["2026-08-30", 72.3, 70], ["2026-08-31", 72.8, 71], ["2026-09-01", 67.7, 64], ["2026-09-02", 58.5, 52], ["2026-09-03", 50.8, 46], ["2026-09-04", 42.6, 38], ["2026-09-05", 37.6, 32], ["2026-09-06", 32.7, 31], ["2026-09-07", 32.5, 29], ["2026-09-08", 28.8, 28], ["2026-09-09", 25.7, 25], ["2026-09-10", 21.2, 18], ["2026-09-11", 22.0, 19], ["2026-09-12", 20.7, 19], ["2026-09-13", 25.5, 23], ["2026-09-14", 31.4, 27], ["2026-09-15", 30.7, 27], ["2026-09-16", 27.2, 25], ["2026-09-17", 24.1, 21], ["2026-09-18", 23.0, 20], ["2026-09-19", 21.3, 16], ["2026-09-20", 18.3, 14], ["2026-09-21", 15.7, 14], ["2026-09-22", 12.6, 10], ["2026-09-23", 11.1, 9], ["2026-09-24", 5.4, 2], ["2026-09-25", 2.3, -1], ["2026-09-26", -1.0, -3], ["2026-09-27", -0.4, -3], ["2026-09-28", 1.4, 0], ["2026-09-29", 1.6, -3], ["2026-09-30", -0.9, -5], ["2026-10-01", -4.8, -6], ["2026-10-02", -0.6, -4], ["2026-10-03", 8.6, 2], ["2026-10-04", 7.7, 6], ["2026-10-05", 5.9, 2], ["2026-10-06", 1.4, -1], ["2026-10-07", 1.2, -2], ["2026-10-08", 1.2, -2], ["2026-10-09", 7.9, 3], ["2026-10-10", 8.0, 5], ["2026-10-11", 15.1, 13], ["2026-10-12", 19.2, 15], ["2026-10-13", 19.7, 19], ["2026-10-14", 14.9, 10], ["2026-10-15", 12.4, 9], ["2026-10-16", 8.9, 6], ["2026-10-17", 10.1, 9], ["2026-10-18", 8.7, 7], ["2026-10-19", 13.5, 9], ["2026-10-20", 19.2, 17], ["2026-10-21", 15.0, 11], ["2026-10-22", 19.4, 17], ["2026-10-23", 25.6, 20], ["2026-10-24", 23.9, 20]], "latest": {"value": 24, "when": "24 Oct, 17:45"}};
+const EUR = new Intl.NumberFormat('en-GB');
+const $ = s => document.querySelector(s);
+
+/* ---------- Carrier rules (each links to its source) ---------- */
+const SRC = {
+  maerskJul:{label:'Maersk notice, 14 Jul 2026 (effective 15 Jul)',url:'https://www.maersk.com/news/articles/2026/07/09/rhine-river-low-water-surcharge'},
+  maerskAug:{label:'Maersk update, 12 Aug 2026',url:'https://www.maersk.com/news/articles/2026/08/12/rhine-river-low-water-surcharge-benelux'},
+  maerskOct:{label:'Container News, 8 Oct 2026 (Maersk revised ladder)',url:'https://container-news.com/maersk-revises-rhine-low-water-surcharges/'},
+  hapag:{label:'Hapag-Lloyd, Rhine low water surcharge update, July 2026',url:'https://www.hapag-lloyd.com/en/services-information/news/2026/07/here-s-an-update-on-the-rhine-river-low-water-surcharge.html'},
+  hapagH:{label:'Hapag-Lloyd, hinterland advisory, July 2026',url:'https://www.hapag-lloyd.com/en/services-information/offices-localinfo/local-news/2026/07/germany--rhine-low-water-is-affecting-hinterland-transport.html'},
+  tradlinx:{label:'Tradlinx, 6 Aug 2026 (Contargo and CMA CGM terms)',url:'https://blogs.tradlinx.com/low-rhine-levels-narrow-inland-options-ahead-of-dutch-port-strikes/'}
+};
+/* Maersk Kaub ladder, tiers in cm: [below, 20ft, 40ft, 45ft] */
+const MAERSK_OCT=[[151,50,60,85],[131,65,90,120],[111,90,105,145],[101,105,165,220],[91,140,190,225],[81,345,435,575],[71,455,550,735],[61,625,735,975],[51,885,1060,1410],[41,1250,1490,1570],[31,1365,1490,1705],[21,1535,1535,2045]];
+const MAERSK_JUL=[[151,45,55,85],[131,60,80,120],[111,80,95,145],[91,100,150,225],[81,195,250,375],[71,270,330,495],[61,345,455,685],[51,880,1055,1250],[41,1250,1490,1570],[31,1335,1560,1670]];
+const MAERSK_AUG=[[151,45,55,85],[131,60,80,120],[111,80,95,145],[91,100,150,225],[81,195,250,375],[71,280,340,495],[61,350,465,695],[51,880,1055,1250],[41,1250,1490,1570],[31,1335,1560,1670]];
+/* Hapag-Lloyd Kaub bands: [from, to, 20ft, 40ft] */
+const HAPAG=[[80,71,300,380],[70,61,400,480],[60,51,550,645],[50,41,775,930]];
+
+function maerskFee(L,box){
+  if(L>=151) return null;
+  let best=null;
+  for(const t of MAERSK_OCT){ if(L<t[0] && (best===null || t[0]<best[0])) best=t; }
+  return best? best[box===20?1:2] : MAERSK_OCT[MAERSK_OCT.length-1][box===20?1:2];
+}
+function hapagFee(L,box){
+  for(const b of HAPAG){ if(L<=b[0] && L>=b[1]) return b[box===20?2:3]; }
+  return null;
+}
+const fmt=v=>v==null?'—':'€'+EUR.format(v);
+
+/* status for one carrier at level L: {state, chip, line, fee20, fee40} */
+function status(c,L){
+  if(c==='maersk'){
+    const f20=maerskFee(L,20), f40=maerskFee(L,40);
+    if(L>=81) return {state:'ok',chip:'Loading guaranteed',line:L>=151?'No surcharge above 150 cm.':'Surcharge applies. Loading still guaranteed.',f20,f40};
+    if(L>=41) return {state:'risk',chip:'Loading not guaranteed',line:'Maersk says it cannot guarantee loading below 81 cm.',f20,f40};
+    return {state:'no',chip:'Transport not guaranteed',line:'Maersk says transport is not guaranteed below 41 cm.',f20,f40};
+  }
+  if(c==='hapag'){
+    const f20=hapagFee(L,20), f40=hapagFee(L,40);
+    if(L>80) return {state:'ok',chip:'No guarantee warning',line:'Surcharge applies. Bands above 80 cm not captured here.',f20:null,f40:null};
+    if(L>=41) return {state:'risk',chip:'Transport not guaranteed',line:'Hapag-Lloyd says transport cannot be guaranteed at 80 cm or lower.',f20,f40};
+    if(L>30) return {state:'risk',chip:'Below published bands',line:'No published price. Transport not guaranteed.',f20:null,f40:null};
+    return {state:'no',chip:'Upper Rhine may close',line:'Hapag-Lloyd warns the Upper Rhine may be unusable below about 30 cm.',f20:null,f40:null};
+  }
+  if(c==='cma'){
+    if(L>40) return {state:'ok',chip:'No limit reached',line:'Price and guarantee terms above 40 cm not captured here.',f20:null,f40:null};
+    if(L>=25) return {state:'risk',chip:'Priced band',line:'Published band: 40 to 25 cm.',f20:1075,f40:1280};
+    if(L>=24) return {state:'risk',chip:'At the limit',line:'Below the published band. CMA CGM says no barge below 24 cm.',f20:null,f40:null};
+    return {state:'no',chip:'No barge possible',line:'CMA CGM says no barge transport is possible below 24 cm.',f20:null,f40:null};
+  }
+  /* merchant haulage, Contargo terms */
+  if(L>=91) return {state:'ok',chip:'Published price',line:'Published bands apply. Bands above 90 cm not captured here.',f20:null,f40:null};
+  if(L>=81) return {state:'ok',chip:'Published price',line:'Deepest published band: 90 to 81 cm.',f20:120,f40:165};
+  return {state:'risk',chip:'Price agreed one by one',line:'At 80 cm or lower the price is agreed individually. Services may be suspended.',f20:null,f40:null};
+}
+const CARRIERS={
+  maersk:{name:'Maersk',src:['maerskOct','maerskAug','maerskJul'],quote:'"in case of water levels at Kaub falling below 81cm ... we regret that a loading guarantee for your cargo cannot be granted" (Maersk, July and August notices). Container News, 8 Oct: Maersk "said transportation cannot be guaranteed when the Kaub water level falls below 41 cm".',bears:'Maersk says barge-operator costs are passed to customers.'},
+  hapag:{name:'Hapag-Lloyd',src:['hapag','hapagH'],quote:'Paraphrase of the Hapag-Lloyd notice: transport cannot be guaranteed at 80 cm or lower at Kaub, and extra costs such as demurrage go to the cargo. Published bands: 80 to 71 cm €300 / €380; 70 to 61 €400 / €480; 60 to 51 €550 / €645; 50 to 41 €775 / €930 (20ft / 40ft). Its site blocks automatic download, so this was read by hand and the 50 to 41 band is confirmed by Tradlinx.',bears:'Hapag-Lloyd says extra costs such as demurrage go to the cargo.'},
+  cma:{name:'CMA CGM',src:['tradlinx'],quote:'"no barge transport was possible below 24cm" (as reported by Tradlinx, 6 Aug 2026). Band 40 to 25 cm: €1,075 (20ft), €1,280 (40ft).',bears:'Cost terms not captured.'},
+  merchant:{name:'Contargo (merchant haulage)',src:['tradlinx'],quote:'"pricing is agreed individually" at 80 cm or lower (as reported by Tradlinx, 6 Aug 2026). Deepest published band 90 to 81 cm: €120 / €165.',bears:'You hold the contract. Check your own terminal free time.'}
+};
+
+/* ---------- Example shipments (made up) ---------- */
+const SHIPS=[
+ {id:'LW-01',from:'Antwerp',to:'Basel',box:20,carrier:'maersk',contract:'Carrier haulage',days:2},
+ {id:'LW-02',from:'Antwerp',to:'Basel',box:20,carrier:'merchant',contract:'Merchant haulage',days:2},
+ {id:'LW-03',from:'Rotterdam',to:'Ludwigshafen',box:40,carrier:'hapag',contract:'Carrier haulage',days:5},
+ {id:'LW-04',from:'Rotterdam',to:'Mainz',box:40,carrier:'maersk',contract:'Carrier haulage',days:9},
+ {id:'LW-05',from:'Antwerp',to:'Karlsruhe',box:20,carrier:'cma',contract:'Carrier haulage',days:4},
+ {id:'LW-06',from:'Antwerp',to:'Frankfurt',box:40,carrier:'hapag',contract:'Carrier haulage',days:12},
+ {id:'LW-07',from:'Antwerp',to:'Strasbourg',box:20,carrier:'merchant',contract:'Merchant haulage',days:7},
+ {id:'LW-08',from:'Rotterdam',to:'Basel',box:40,carrier:'maersk',contract:'Carrier haulage',days:3},
+ {id:'LW-09',from:'Antwerp',to:'Mannheim',box:20,carrier:'cma',contract:'Carrier haulage',days:14},
+ {id:'LW-10',from:'Rotterdam',to:'Wörth',box:40,carrier:'merchant',contract:'Merchant haulage',days:10}
+];
+
+/* ---------- State ---------- */
+const G=DATA.gauge; // [date, mean, min]
+const LATEST=DATA.latest;
+const state={level:LATEST.value,date:null,slots:4,theme:'light'};
+
+/* ---------- Decision engine ---------- */
+function decide(L,slots){
+  const out=SHIPS.map(s=>({s,st:status(s.carrier,L)}));
+  const needs=out.filter(o=>o.st.state==='no' || (o.st.state==='risk' && o.s.days<=5));
+  needs.sort((a,b)=>a.s.days-b.s.days||a.s.id.localeCompare(b.s.id));
+  const railIds=new Set(needs.slice(0,slots).map(o=>o.s.id));
+  for(const o of out){
+    const needAlt=needs.includes(o);
+    if(!needAlt){
+      o.rec=o.st.state==='ok'?'Stay on barge':'Barge at risk: check daily';
+      o.cls=o.st.state==='ok'?'barge':'truck'; o.mode=o.st.state==='ok'?'barge':'watch';
+    } else if(railIds.has(o.s.id)){ o.rec='Move to rail'; o.cls='rail'; o.mode='rail'; }
+    else if(o.s.days<=3){ o.rec='Truck, urgent'; o.cls='truck'; o.mode='truck'; }
+    else { o.rec='Hold and check free time'; o.cls='hold'; o.mode='hold'; }
+  }
+  return {out,needs};
+}
+
+/* ---------- Rendering ---------- */
+function levelLabel(){
+  return state.level+' cm';
+}
+function renderMsg(){
+  $('#msg').textContent='At 24 cm, no carrier guarantees a barge. Rail slots decide who moves.';
+}
+function renderKpis(){
+  const n=G.length;
+  let run=0; for(let i=n-1;i>=0;i--){ if(G[i][1]<81) run++; else break; }
+  const startRun=G[n-run][0];
+  const lowest=G.reduce((m,r)=>r[2]<m[2]?r:m,G[0]);
+  const days81=G.filter(r=>r[1]<81).length;
+  const d=s=>new Date(s+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  $('#kpis').innerHTML=`
+   <div class="kpi bad"><b>${LATEST.value} cm</b><span>Kaub now (${LATEST.when}). Lowest reading ${lowest[2]} cm on ${d(lowest[0])}.</span></div>
+   <div class="kpi bad"><b>${run} days</b><span>in a row below 81 cm, since ${d(startRun)}. 81 cm is where Maersk and Hapag-Lloyd stop guaranteeing.</span></div>
+   <div class="kpi mid"><b>${days81} of ${n}</b><span>days below 81 cm since 20 June.</span></div>
+   <div class="kpi"><b>4 carriers</b><span>4 different answers at the same level. Click Rule changes to see Maersk's tariff move.</span></div>`;
+}
+const EVENTS=[
+ {n:1,date:'2026-07-14',title:'14 Jul: Maersk notice',src:'maerskJul',text:'Maersk publishes its Kaub price ladder from 150 cm, effective 15 July. It says it cannot guarantee loading below 81 cm.'},
+ {n:2,date:'2026-07-20',title:'20 Jul: Hapag-Lloyd customer letter',src:'hapagH',text:'Hapag-Lloyd sends customers a letter on Rhine low water. Its Kaub price bands run down to 41 cm, and it says transport cannot be guaranteed at 80 cm or lower.'},
+ {n:3,date:'2026-08-12',title:'12 Aug: Maersk update',src:'maerskAug',text:'Maersk updates its ladders for Kaub, Cologne and Duisburg-Ruhrort. Two Kaub tiers differ from July (below 71 cm and below 61 cm).'},
+ {n:4,date:'2026-09-09',title:'9 Sep: Dutch rail walkout announced',src:'tradlinx',text:'Tradlinx reported on 6 August that a Dutch rail walkout was announced for 9 September. Rail is the fallback when barges stop, so a rail strike narrows the options.'},
+ {n:5,date:'2026-10-08',title:'8 Oct: Maersk revises its ladder',src:'maerskOct',text:'Container News reports a revised Maersk ladder. The Kaub price below 81 cm for a 20ft box is now €345, up from €195.'}
+];
+function renderChart(){
+  const W=820,H=330,L=46,R=14,T=26,B=30, n=G.length;
+  const ymin=-10,ymax=130;
+  const x=i=>L+(W-L-R)*i/(n-1);
+  const y=v=>T+(H-T-B)*(1-(v-ymin)/(ymax-ymin));
+  let s=`<svg viewBox="0 0 ${W} ${H}" id="svg" role="img" aria-label="Kaub water level, 20 June to 24 October 2026">`;
+  s+=`<rect x="${L}" y="${y(81)}" width="${W-L-R}" height="${y(ymin)-y(81)}" fill="var(--shade)"/>`;
+  for(const v of [0,40,80,120]){ s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${v}</text>`; }
+  const lines=[[81,'81 cm: Maersk and Hapag-Lloyd stop guaranteeing','var(--bad)'],[41,'41 cm: Maersk, transport not guaranteed','var(--bad)'],[24,'24 cm: CMA CGM, no barge below','var(--bad)']];
+  for(const [v,t,c] of lines){ s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="${c}" stroke-dasharray="5 4" stroke-width="1.3"/>`; }
+  s+=`<text x="${L+4}" y="${y(81)-4}" font-size="12" fill="var(--bad)" class="lbl">81 cm: Maersk and Hapag-Lloyd stop guaranteeing</text>`;
+  s+=`<text x="${W-R-4}" y="${y(41)-4}" text-anchor="end" font-size="12" fill="var(--bad)" class="lbl">41 cm: Maersk, transport not guaranteed</text>`;
+  s+=`<text x="${W-R-4}" y="${y(24)+14}" text-anchor="end" font-size="12" fill="var(--bad)" class="lbl">24 cm: CMA CGM, no barge below</text>`;
+  let d=''; G.forEach((r,i)=>{ d+=(i?'L':'M')+x(i).toFixed(1)+' '+y(r[1]).toFixed(1); });
+  s+=`<path d="${d}" fill="none" stroke="var(--river)" stroke-width="2.4"/>`;
+  const months=[['2026-07-01','1 Jul'],['2026-08-01','1 Aug'],['2026-09-01','1 Sep'],['2026-10-01','1 Oct']];
+  for(const [dt,lab] of months){ const i=G.findIndex(r=>r[0]===dt); if(i>=0){ s+=`<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${H-B}" stroke="var(--line)"/><text x="${x(i)}" y="${H-10}" text-anchor="middle" font-size="12" fill="var(--muted)">${lab}</text>`; } }
+  s+=`<text x="${L}" y="${H-10}" text-anchor="start" font-size="12" fill="var(--muted)">20 Jun</text><text x="${W-R}" y="${H-10}" text-anchor="end" font-size="12" fill="var(--muted)">24 Oct</text>`;
+  s+=`<text x="12" y="${T-8}" font-size="12" fill="var(--muted)">cm</text>`;
+  for(const e of EVENTS){ const i=G.findIndex(r=>r[0]===e.date); if(i<0) continue; s+=`<g class="ev" data-n="${e.n}" style="cursor:pointer"><line x1="${x(i)}" x2="${x(i)}" y1="${T+8}" y2="${H-B}" stroke="var(--accent)" stroke-dasharray="2 3" opacity=".6"/><circle cx="${x(i)}" cy="${T+8}" r="10" fill="var(--accent)"/><text x="${x(i)}" y="${T+12}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">${e.n}</text></g>`; }
+  /* cursor */
+  let ci=state.date? G.findIndex(r=>r[0]===state.date) : -1;
+  if(ci>=0){ s+=`<line x1="${x(ci)}" x2="${x(ci)}" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-width="1.4"/><circle cx="${x(ci)}" cy="${y(G[ci][1])}" r="5" fill="var(--ink)"/>`; }
+  else { s+=`<line x1="${L}" x2="${W-R}" y1="${y(state.level)}" y2="${y(state.level)}" stroke="var(--ink)" stroke-width="1.4" opacity=".7"/>`; }
+  s+='</svg>';
+  $('#chart').innerHTML=s;
+  const svg=$('#svg');
+  svg.addEventListener('click',ev=>{
+    if(ev.target.closest('.ev')) return;
+    const r=svg.getBoundingClientRect(); const px=(ev.clientX-r.left)/r.width*W;
+    let i=Math.round((px-L)/(W-L-R)*(n-1)); i=Math.max(0,Math.min(n-1,i));
+    state.date=G[i][0]; state.level=Math.round(G[i][1]); update();
+  });
+  svg.querySelectorAll('.ev').forEach(g=>g.addEventListener('click',()=>openEvent(+g.dataset.n)));
+}
+function renderCards(){
+  const L=state.level;
+  $('#cards').innerHTML=Object.keys(CARRIERS).map(k=>{
+    const st=status(k,L), c=CARRIERS[k];
+    const fee=(st.f20!=null||st.f40!=null)?`<div class="fee">20ft ${fmt(st.f20)} · 40ft ${fmt(st.f40)}</div>`:`<div class="fee">No published price at this level</div>`;
+    return `<button class="card ${st.state}" data-k="${k}"><h3>${c.name}<span class="chip">${st.chip}</span></h3>${fee}<p>${st.line}</p></button>`;
+  }).join('');
+  document.querySelectorAll('.card').forEach(b=>b.addEventListener('click',()=>openCarrier(b.dataset.k)));
+}
+function renderRows(){
+  const L=state.level, {out,needs}=decide(L,state.slots);
+  $('#rows').innerHTML=out.map(o=>{
+    const s=o.s, st=o.st;
+    return `<tr class="row" data-id="${s.id}"><td><b>${s.id}</b></td><td>${s.from} → ${s.to}</td><td>${s.box}ft</td><td>${s.contract}<span class="tag">${CARRIERS[s.carrier].name.split(' (')[0]}</span></td><td>${s.days} days</td><td><span class="dot d-${st.state}"></span>${st.chip}</td><td class="rec ${o.cls}">${o.rec}</td></tr>`;
+  }).join('');
+  document.querySelectorAll('tr.row').forEach(r=>r.addEventListener('click',()=>openShip(r.dataset.id)));
+  const rail=out.filter(o=>o.mode==='rail').length, wait=out.filter(o=>o.mode==='hold'||o.mode==='truck').length, barge=out.filter(o=>o.mode==='barge').length;
+  const comp=needs.length;
+  let t;
+  if(comp===0) t=`At ${L} cm every example shipment can stay on barge. Drag the slider down to see where each carrier's line falls.`;
+  else t=`At ${L} cm, <b>${comp} of 10</b> shipments need another route. With <b>${state.slots}</b> rail slots, <b>${rail}</b> move to rail and <b>${comp-rail}</b> do not get one (${out.filter(o=>o.mode==='truck').length} by truck, ${out.filter(o=>o.mode==='hold').length} on hold). ${barge} stay on barge. The rail slot count is an assumption. Change it above.`;
+  $('#insight').innerHTML=t;
+}
+function renderControl(){
+  $('#lvl').value=state.level;
+  $('#lvlOut').textContent=state.level+' cm';
+  $('#slotN').textContent=state.slots;
+}
+function update(){ renderControl(); renderChart(); renderCards(); renderRows(); }
+
+/* ---------- Pop-ups ---------- */
+function open(html){ $('#sheet').innerHTML='<button class="btn close" id="x">Close</button>'+html; $('#modal').classList.add('open'); $('#x').onclick=()=>$('#modal').classList.remove('open'); }
+function links(keys){ return '<ul>'+keys.map(k=>`<li><a href="${SRC[k].url}" target="_blank" rel="noopener">${SRC[k].label}</a></li>`).join('')+'</ul>'; }
+function openEvent(n){ const e=EVENTS.find(v=>v.n===n); open(`<h2>${e.title}</h2><p>${e.text}</p><h3>Source</h3>${links([e.src])}`); }
+function openCarrier(k){
+  const c=CARRIERS[k], st=status(k,state.level);
+  open(`<h2>${c.name} at ${state.level} cm</h2><p><b>${st.chip}.</b> ${st.line}</p><h3>What the notice says</h3><div class="q">${c.quote}</div><h3>Who pays for delay</h3><p>${c.bears}</p><h3>Sources</h3>${links(c.src)}`);
+}
+function openShip(id){
+  const s=SHIPS.find(v=>v.id===id), {out}=decide(state.level,state.slots), o=out.find(v=>v.s.id===id), c=CARRIERS[s.carrier];
+  const why = o.mode==='barge' ? 'The carrier still guarantees the barge at this level.'
+    : o.mode==='watch' ? 'Barge is possible but not guaranteed. The cargo is not needed for more than 5 days, so check the gauge each morning.'
+    : o.mode==='rail' ? 'Barge is not safe to rely on. This is one of the most urgent shipments, so it gets a rail slot.'
+    : o.mode==='truck' ? 'Barge is not safe to rely on and no rail slot is left. It is needed within 3 days, so truck.'
+    : 'Barge is not safe to rely on and no rail slot is left. It is not needed for more than 3 days, so hold it and check free time before charges start.';
+  const same = (s.id==='LW-01'||s.id==='LW-02') ? '<h3>Why LW-01 and LW-02 differ</h3><p>Same lane, same box, same day. LW-01 is under carrier haulage, so Maersk\'s ladder and its pass-through apply. LW-02 is under merchant haulage, so the price is agreed with the operator and no carrier ladder applies.</p>' : '';
+  open(`<h2>${s.id}: ${s.from} → ${s.to}</h2><p>${s.box}ft box, ${s.contract.toLowerCase()}, needed in ${s.days} days. Example only.</p><p><b>Recommendation: ${o.rec}.</b> ${why}</p><h3>Terms at ${state.level} cm</h3><p><b>${o.st.chip}.</b> ${o.st.line} ${s.box===20?(o.st.f20!=null?'Price: '+fmt(o.st.f20)+'.':''):(o.st.f40!=null?'Price: '+fmt(o.st.f40)+'.':'')}</p><div class="q">${c.quote}</div><h3>Who pays for delay</h3><p>${c.bears}</p>${same}<h3>Sources</h3>${links(c.src)}<p style="color:var(--muted)">Rule used: barge at risk or closed means an alternative. The most urgent shipments get rail slots first. Then truck if needed within 3 days. Otherwise hold.</p>`);
+}
+function openDiff(){
+  const tiers=[151,131,111,101,91,81,71,61,51,41,31,21];
+  const get=(lad,t)=>{ const r=lad.find(x=>x[0]===t); return r?r[1]:null; };
+  let rows=tiers.map(t=>{
+    const a=get(MAERSK_JUL,t),b=get(MAERSK_AUG,t),c=get(MAERSK_OCT,t);
+    const ch=(a!=null&&c!=null&&a!==c)||(a==null&&c!=null)||(a!=null&&b!=null&&a!==b);
+    const pct=(a!=null&&c!=null&&a!==c)?` (+${Math.round((c-a)/a*100)}%)`:'';
+    return `<tr class="${ch?'ch':''}"><td>below ${t-1+1>=100?(t/100).toFixed(2)+' m':t+' cm'}</td><td>${fmt(a)}</td><td>${fmt(b)}</td><td>${fmt(c)}${pct}</td></tr>`;
+  }).join('');
+  open(`<h2>Maersk's Kaub price, 20ft box: three versions</h2>
+  <p>The tiers are the same river levels. The prices are not. Changed rows are shaded.</p>
+  <table><thead><tr><th>Kaub level</th><th>14 Jul</th><th>12 Aug</th><th>8 Oct</th></tr></thead><tbody>${rows}</tbody></table>
+  <h3>What stands out</h3>
+  <ul>
+   <li>The tier below 81 cm rose from €195 to €345 for a 20ft box (+77%). The biggest rises are in the bands between 61 and 90 cm (+40% to +81%). The bands below 51 cm barely moved.</li>
+   <li>At today's level the change is small: €1,335 to €1,365 for a 20ft box.</li>
+   <li>A tier below 101 cm appears for the first time in October, and a tier below 21 cm is added.</li>
+   <li><b>Check before relying on it:</b> in the 12 Aug table, a 45ft box at the Duisburg-Ruhrort "below 3.00 m" tier costs €450, ten times its neighbours. The October list shows €45. It looks like a typing error that was later fixed.</li>
+   <li><b>Check before relying on it:</b> in the October list, the 40ft price below 31 cm (€1,490) is lower than in August (€1,560). This comes from Container News, not Maersk's own page.</li>
+  </ul>
+  <h3>Sources</h3>${links(['maerskJul','maerskAug','maerskOct'])}`);
+}
+function openBuilt(){
+  open(`<h2>How this was built</h2>
+  <ol>
+   <li><b>River data.</b> Daily Kaub readings from the federal waterways service (Pegelonline) for 20 June to 24 October 2026, and daily values for 2021 to 2025 from the federal hydrology yearbook. Eight readings were checked against figures that Contargo published. All eight matched. The yearbook gave the known record low of 32 cm on 15 August 2022.</li>
+   <li><b>Carrier rules.</b> An AI model (Claude) read the carrier notices and turned them into rules, each with its source. The three Maersk tables were compared with the page text for 14 July and 12 August, and with the Container News text for 8 October. Hapag-Lloyd's site blocked automatic download, so its figures come from text extraction and are partly confirmed by Tradlinx. CMA CGM and Contargo terms come from Tradlinx, 6 August 2026.</li>
+   <li><b>Decisions.</b> Plain code, not an AI model. The page does no live AI calls. Rules and example shipments are fixed, so it works without a network connection.</li>
+  </ol>
+  <h3>What this is not</h3>
+  <ul>
+   <li>The ten shipments are made up. The rail slot count is an assumption.</li>
+   <li>It is not connected to any company system and is not a forecast.</li>
+   <li>Carrier pages change. Check the current notice before acting.</li>
+   <li>We did not test whether the river warned shippers before carriers did. The public record does not allow it.</li>
+  </ul>
+  <h3>Sources</h3>${links(['maerskJul','maerskAug','maerskOct','hapag','hapagH','tradlinx'])}
+  <p><a href="https://pegelonline.wsv.de/" target="_blank" rel="noopener">Pegelonline</a> · <a href="https://dgj-daten.bafg.de/Rhein/Kaub/25700100_WQ.pdf" target="_blank" rel="noopener">BfG yearbook, Kaub</a></p>`);
+}
+
+/* ---------- Wiring ---------- */
+$('#lvl').addEventListener('input',e=>{ state.level=+e.target.value; state.date=null; update(); });
+$('#bToday').addEventListener('click',()=>{ state.level=LATEST.value; state.date=null; update(); });
+$('#slotMinus').addEventListener('click',()=>{ state.slots=Math.max(0,state.slots-1); update(); });
+$('#slotPlus').addEventListener('click',()=>{ state.slots=Math.min(10,state.slots+1); update(); });
+$('#bDiff').addEventListener('click',openDiff);
+$('#bBuilt').addEventListener('click',openBuilt);
+$('#bTheme').addEventListener('click',()=>{
+  state.theme=state.theme==='light'?'dark':'light';
+  document.documentElement.dataset.theme=state.theme==='dark'?'dark':'';
+  $('#bTheme').textContent=state.theme==='dark'?'Light mode':'Dark mode';
+});
+$('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') $('#modal').classList.remove('open'); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('#modal').classList.remove('open'); });
+renderMsg(); renderKpis(); update();
+</script>
+</body>
+</html>
