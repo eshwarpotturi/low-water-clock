@@ -1,4 +1,4 @@
-"""Parse BfG DGJ Kaub water-level yearbook text (pdftotext -layout) into daily values.
+scripts/"""Parse BfG DGJ Kaub water-level yearbook text (pdftotext -layout) into daily values.
 
 Usage: python3 -I parse_bafg.py kaub.txt out.csv
 Each log line prints a timestamp and progress (done/total).
