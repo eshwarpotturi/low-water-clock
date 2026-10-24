@@ -85,6 +85,17 @@ footer a{color:var(--accent)}
 .sheet .close{float:right;margin-left:8px}
 .ch{background:var(--badbg);font-weight:700}
 .tag{font-size:.72rem;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted);margin-left:4px}
+.hl{outline:4px solid var(--accent);outline-offset:3px;border-radius:10px;transition:outline .2s}
+.guide{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:min(980px,calc(100% - 24px));background:var(--panel);color:var(--ink);border:2px solid var(--accent);border-radius:14px;padding:12px 16px;z-index:30;display:none;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.guide.on{display:block}
+.guide .gs{font-size:.8rem;color:var(--muted);font-weight:700;letter-spacing:.04em}
+.guide h3{margin:2px 0 4px;font-size:1.45rem}
+.guide p{margin:0 0 8px;font-size:1.05rem}
+.guide .gb{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.guide .dots{display:flex;gap:5px}.guide .dots i{width:10px;height:10px;border-radius:50%;background:var(--line);display:block}.guide .dots i.on{background:var(--accent)}
+body.guiding{padding-bottom:230px}
+body.guiding .modal{align-items:flex-start}
+body.guiding .sheet{max-height:calc(100vh - 270px)}
 @media (max-width:1100px){.main,.bottom{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.time{grid-template-columns:1fr}}
 </style>
 </head>
@@ -97,6 +108,7 @@ footer a{color:var(--accent)}
     <div class="sub" id="sub"></div>
   </div>
   <div class="tools">
+    <button class="btn primary" id="bGuide">Guided run</button>
     <button class="btn" id="bBuilt">How this was built</button>
     <button class="btn" id="bDiff">Rule changes</button>
     <button class="btn" id="bTheme">Dark mode</button>
@@ -145,6 +157,7 @@ footer a{color:var(--accent)}
 </footer>
 </div>
 
+<div class="guide" id="guide"></div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
 <script>
@@ -462,6 +475,35 @@ $('#bTheme').onclick=()=>{
 };
 $('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ---------- Guided run ---------- */
+const G_STEPS=[
+ {t:'The problem',x:'Every shipment on this page is made up, but the river and the carrier notices are real. The question: when the water falls, which shipments need a person, and which do not?',run(){state.d=dIdx('2026-07-13');state.sel=null;},hl:'#kpis'},
+ {t:'14 July: a notice arrives',x:'Maersk publishes a price ladder tied to the Kaub gauge. Nobody asked for it. The AI reads it once and files it as a rule: version 1, with a source link and an owner. Carriers with no rule yet still go to a person, because the system cannot judge them. That is the safe default.',run(){state.d=D_MJUL;state.sel=null;},hl:'#rules'},
+ {t:'More notices, more rules',x:'By 6 August the system holds rules for four carriers. Each rule has its own version, so any decision can be traced to the exact rule used.',run(){state.d=D_TRAD;state.sel=null;},hl:'#rules'},
+ {t:'8 October: a rule changes',x:'Maersk revises its ladder. The system compares version 3 with version 2 and flags what changed. The price below 81 cm rises from \u20ac195 to \u20ac345 for a 20ft box, up 77%. Two entries look like errors, so a person must check them.',run(){state.d=D_MOCT;state.sel=null;openDiff();},hl:'#sheet',keepModal:true},
+ {t:'24 October: the river is at 24 cm',x:'No carrier guarantees a barge now. Yet most shipments still need no screen. The headline counts people\u2019s time: the cases below are the only ones that reach a person.',run(){closeModal();state.d=LAST;state.decisions={};state.log=[];state.sel=null;},hl:'#msg'},
+ {t:'What was handled without a screen',x:'These shipments are either still guaranteed, or not needed for several days. A rule handles them and logs it. A person can open the list, but is not asked.',run(){openAuto();},hl:'#sheet',keepModal:true},
+ {t:'What reaches a person',x:'The queue is sorted by urgency. Each card says why it is here: the barge is not guaranteed and the cargo is needed soon.',run(){closeModal();},hl:'#queue'},
+ {t:'One case, with everything needed to decide',x:'The person sees the reason, the surcharge, the rule version and the carrier\u2019s own words, with a source link. The system suggests an action. The person decides.',run(){const c=compute(state.d);if(c.queue.length){state.sel=c.queue[0].s.id;}},hl:'#decide'},
+ {t:'Approve, and it is logged',x:'Approving moves the shipment to rail and uses one of the four rail slots. The log records who decided, what they saw and which rule version applied.',run(){const c=compute(state.d);const q=c.queue.find(v=>v.s.id===state.sel);if(q&&q.rec!=='check'&&!state.decisions[q.s.id])decide(q,q.rec);},hl:'#log'},
+ {t:'The one message',x:'Do not build a screen for everything. Build one for the exceptions, with an owner for every rule. This is a made-up fleet on real notices, not connected to any company system.',run(){state.sel=null;},hl:'#msg'}
+];
+let gi=-1;
+function gShow(i){
+  gi=Math.max(0,Math.min(G_STEPS.length-1,i));
+  const st=G_STEPS[gi]; stopPlay();
+  if(!st.keepModal) closeModal();
+  st.run(); render();
+  document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl'));
+  const el=document.querySelector(st.hl); if(el){ el.classList.add('hl'); if(!st.keepModal) el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  const g=$('#guide'); g.classList.add('on'); document.body.classList.add('guiding');
+  g.innerHTML='<div class="gs">STEP '+(gi+1)+' OF '+G_STEPS.length+'</div><h3>'+st.t+'</h3><p>'+st.x+'</p><div class="gb"><div class="dots">'+G_STEPS.map((_,k)=>'<i class="'+(k===gi?'on':'')+'"></i>').join('')+'</div><div><button class="btn" id="gX">Exit</button> <button class="btn" id="gP"'+(gi===0?' disabled':'')+'>Back</button> <button class="btn primary" id="gN">'+(gi===G_STEPS.length-1?'Finish':'Next')+'</button></div></div>';
+  $('#gX').onclick=gEnd; $('#gP').onclick=()=>gShow(gi-1); $('#gN').onclick=()=>gi===G_STEPS.length-1?gEnd():gShow(gi+1);
+}
+function gEnd(){ gi=-1; closeModal(); $('#guide').classList.remove('on'); document.body.classList.remove('guiding'); document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl')); state.d=LAST; state.decisions={}; state.log=[]; state.sel=null; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+$('#bGuide').onclick=()=>{ state.decisions={}; state.log=[]; gShow(0); };
+document.addEventListener('keydown',e=>{ if(gi<0) return; if(e.key==='ArrowRight') gShow(gi+1); if(e.key==='ArrowLeft') gShow(gi-1); });
 render();
 </script>
 </body>
