@@ -305,11 +305,10 @@ function reasonText(q){
 /* ---------- Rendering ---------- */
 function renderHead(c){
   const n=c.queue.length, m=c.auto.length;
-  $('#msg').innerHTML= n===0 ? '<b>0</b> shipments need you. The system handled the other '+m+'.'
-    : '<b>'+n+'</b> shipment'+(n===1?'':'s')+' need'+(n===1?'s':'')+' you. The other '+m+' needed no screen.';
+  $('#msg').innerHTML='Rhine at '+c.L+' cm: <b>'+n+'</b> shipment'+(n===1?'':'s')+' need'+(n===1?'s':'')+' you, '+m+' need no screen.';
   $('#sub').textContent='Only the cases where a person’s judgement changes the result reach a screen. Everything else is handled and logged.';
   $('#dateOut').textContent=dateLabel(state.d);
-  $('#lvlOut').textContent='Kaub '+c.L+' cm';
+  $('#lvlOut').textContent='Rhine water level at Kaub: '+c.L+' cm';
 }
 function renderKpis(c){
   const decided=Object.keys(state.decisions).length;
@@ -396,7 +395,8 @@ function renderChart(){
   let s='<svg viewBox="0 0 '+W+' '+H+'" id="svg" role="img" aria-label="Kaub level by day">';
   s+='<rect x="'+L+'" y="'+y(81)+'" width="'+(W-L-R)+'" height="'+(y(ymin)-y(81))+'" fill="var(--shade)"/>';
   [0,81].forEach(v=>{ s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="'+(v===81?'var(--bad)':'var(--line)')+'" '+(v===81?'stroke-dasharray="5 4"':'')+'/><text x="'+(L-4)+'" y="'+(y(v)+4)+'" text-anchor="end" font-size="11" fill="var(--muted)">'+v+'</text>'; });
-  s+='<text x="'+(L+4)+'" y="'+(y(81)-3)+'" font-size="11" fill="var(--bad)" class="lbl">81 cm: Maersk and Hapag-Lloyd stop guaranteeing</text>';
+  s+='<text x="'+(L+4)+'" y="'+(y(81)-3)+'" font-size="11" fill="var(--bad)" class="lbl">Below 81 cm, Maersk and Hapag-Lloyd stop guaranteeing barges</text>';
+  s+='<text x="'+(W-R)+'" y="'+(T+26)+'" text-anchor="end" font-size="11" fill="var(--muted)">River level at Kaub gauge, cm (blue line)</text>';
   let p=''; G.forEach((r,i)=>{ p+=(i?'L':'M')+x(i).toFixed(1)+' '+y(r[1]).toFixed(1); });
   s+='<path d="'+p+'" fill="none" stroke="var(--river)" stroke-width="2.2"/>';
   [['2026-07-01','1 Jul'],['2026-08-01','1 Aug'],['2026-09-01','1 Sep'],['2026-10-01','1 Oct']].forEach(([dt,lab])=>{ const i=dIdx(dt); s+='<text x="'+x(i)+'" y="'+(H-4)+'" text-anchor="middle" font-size="11" fill="var(--muted)">'+lab+'</text>'; });
@@ -478,17 +478,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
 /* ---------- Guided run ---------- */
 const G_STEPS=[
- {t:'The problem',x:'Every shipment on this page is made up, but the river and the carrier notices are real. The question: when the water falls, which shipments need a person, and which do not?',run(){state.d=dIdx('2026-07-13');state.sel=null;},hl:'#kpis'},
- {t:'14 July: a notice arrives',x:'Maersk publishes a price ladder tied to the Kaub gauge. Nobody asked for it. The AI reads it once and files it as a rule: version 1, with a source link and an owner. Carriers with no rule yet still go to a person, because the system cannot judge them. That is the safe default.',run(){state.d=D_MJUL;state.sel=null;},hl:'#rules'},
- {t:'More notices, more rules',x:'By 6 August the system holds rules for four carriers. Each rule has its own version, so any decision can be traced to the exact rule used.',run(){state.d=D_TRAD;state.sel=null;},hl:'#rules'},
- {t:'8 October: a rule changes',x:'Maersk revises its ladder. The system compares version 3 with version 2 and flags what changed. The price below 81 cm rises from \u20ac195 to \u20ac345 for a 20ft box, up 77%. Two entries look like errors, so a person must check them.',run(){state.d=D_MOCT;state.sel=null;openDiff();},hl:'#sheet',keepModal:true},
- {t:'24 October: the river is at 24 cm',x:'No carrier guarantees a barge now. Yet most shipments still need no screen. The headline counts people\u2019s time: the cases below are the only ones that reach a person.',run(){closeModal();state.d=LAST;state.decisions={};state.log=[];state.sel=null;},hl:'#msg'},
- {t:'What was handled without a screen',x:'These shipments are either still guaranteed, or not needed for several days. A rule handles them and logs it. A person can open the list, but is not asked.',run(){openAuto();},hl:'#sheet',keepModal:true},
- {t:'What reaches a person',x:'The queue is sorted by urgency. Each card says why it is here: the barge is not guaranteed and the cargo is needed soon.',run(){closeModal();},hl:'#queue'},
- {t:'One case, with everything needed to decide',x:'The person sees the reason, the surcharge, the rule version and the carrier\u2019s own words, with a source link. The system suggests an action. The person decides.',run(){const c=compute(state.d);if(c.queue.length){state.sel=c.queue[0].s.id;}},hl:'#decide'},
- {t:'Approve, and it is logged',x:'Approving moves the shipment to rail and uses one of the four rail slots. The log records who decided, what they saw and which rule version applied.',run(){const c=compute(state.d);const q=c.queue.find(v=>v.s.id===state.sel);if(q&&q.rec!=='check'&&!state.decisions[q.s.id])decide(q,q.rec);},hl:'#log'},
- {t:'The one message',x:'Do not build a screen for everything. Build one for the exceptions, with an owner for every rule. This is a made-up fleet on real notices, not connected to any company system.',run(){state.sel=null;},hl:'#msg'}
+ {t:'The river falls',x:'Watch the Rhine level at Kaub drop. Below 81 cm, carriers stop guaranteeing barges, and shipments start needing a person.',run(){gAnim();},hl:'#chart'},
+ {t:'Each carrier notice becomes a rule',x:'Maersk, Hapag-Lloyd and others publish price ladders tied to this level. The AI reads each notice into a versioned rule. On 8 October Maersk raised its price below 81 cm by 77%.',run(){gStop();state.d=D_MOCT;state.sel=null;},hl:'#rules'},
+ {t:'Most shipments need no one',x:'At 24 cm, 27 shipments are still handled by a rule and logged. Only 26 reach a person.',run(){gStop();state.d=LAST;state.decisions={};state.log=[];state.sel=null;},hl:'#kpis'},
+ {t:'A person decides, with the facts',x:'Each case shows why it is here, the surcharge, the rule version and the carrier\u2019s words. Approving it writes the log.',run(){gStop();state.d=LAST;const c=compute(state.d);if(c.queue.length){state.sel=c.queue[0].s.id;const q=c.queue[0];if(q.rec!=='check'&&!state.decisions[q.s.id])decide(q,q.rec);}},hl:'#decide'}
 ];
+let gT=null;
+function gStop(){ if(gT){clearInterval(gT);gT=null;} }
+function gAnim(){ gStop(); state.decisions={}; state.log=[]; state.sel=null; let d=dIdx('2026-07-01'); state.d=d; render();
+  gT=setInterval(()=>{ d+=2; if(d>=LAST){d=LAST;gStop();} state.d=d; render(); },60); }
 let gi=-1;
 function gShow(i){
   gi=Math.max(0,Math.min(G_STEPS.length-1,i));
@@ -501,7 +499,7 @@ function gShow(i){
   g.innerHTML='<div class="gs">STEP '+(gi+1)+' OF '+G_STEPS.length+'</div><h3>'+st.t+'</h3><p>'+st.x+'</p><div class="gb"><div class="dots">'+G_STEPS.map((_,k)=>'<i class="'+(k===gi?'on':'')+'"></i>').join('')+'</div><div><button class="btn" id="gX">Exit</button> <button class="btn" id="gP"'+(gi===0?' disabled':'')+'>Back</button> <button class="btn primary" id="gN">'+(gi===G_STEPS.length-1?'Finish':'Next')+'</button></div></div>';
   $('#gX').onclick=gEnd; $('#gP').onclick=()=>gShow(gi-1); $('#gN').onclick=()=>gi===G_STEPS.length-1?gEnd():gShow(gi+1);
 }
-function gEnd(){ gi=-1; closeModal(); $('#guide').classList.remove('on'); document.body.classList.remove('guiding'); document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl')); state.d=LAST; state.decisions={}; state.log=[]; state.sel=null; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+function gEnd(){ gStop(); gi=-1; closeModal(); $('#guide').classList.remove('on'); document.body.classList.remove('guiding'); document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl')); state.d=LAST; state.decisions={}; state.log=[]; state.sel=null; render(); window.scrollTo({top:0,behavior:'smooth'}); }
 $('#bGuide').onclick=()=>{ state.decisions={}; state.log=[]; gShow(0); };
 document.addEventListener('keydown',e=>{ if(gi<0) return; if(e.key==='ArrowRight') gShow(gi+1); if(e.key==='ArrowLeft') gShow(gi-1); });
 render();
