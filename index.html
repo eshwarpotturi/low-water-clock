@@ -555,13 +555,13 @@ const G_STEPS=[
  {t:'The river falls',x:'Watch the Rhine level at Kaub drop. Below 81 cm, carriers stop guaranteeing barges, and shipments start needing a person.',run(){gAnim();},hl:'#scene'},
  {t:'Each carrier notice becomes a rule',x:'Maersk, Hapag-Lloyd and others publish price ladders tied to this level. The AI reads each notice into a versioned rule. On 8 October Maersk raised its price below 81 cm by 77%.',run(){gStop();state.d=D_MOCT;state.sel=null;},hl:'#rules'},
  {t:'Most shipments need no one',x:'At 24 cm, 27 shipments are still handled by a rule and logged. Only 26 reach a person.',run(){gStop();state.d=LAST;state.decisions={};state.log=[];state.sel=null;},hl:'#kpis'},
- {t:'A person decides, with the facts',x:'Each case shows why it is here, the surcharge, the rule version and the carrier\u2019s words. Approving it writes the log.',run(){gStop();state.d=LAST;const c=compute(state.d);if(c.queue.length){state.sel=c.queue[0].s.id;const q=c.queue[0];if(q.rec!=='check'&&!state.decisions[q.s.id])decide(q,q.rec);}},hl:'#decide'}
+ {t:'Your turn: a person decides',x:'This case reached you because the rule cannot settle it alone. Read why it is here, then choose an action below. Nothing happens until you do.',gate:true,after:'Done. Your decision is in the log with the rule version and the carrier\u2019s words. Everything else stayed automatic.',run(){gStop();state.d=LAST;state.decisions={};state.log=[];const c=compute(state.d);if(c.queue.length){state.sel=c.queue[0].s.id;}},hl:'#decide'}
 ];
 let gT=null;
 function gStop(){ if(gT){clearInterval(gT);gT=null;} }
 function gAnim(){ gStop(); state.decisions={}; state.log=[]; state.sel=null; let d=dIdx('2026-07-01'); state.d=d; render();
-  gT=setInterval(()=>{ d+=2; if(d>=LAST){d=LAST;gStop();} state.d=d; render(); },60); }
-let gi=-1;
+  gT=setInterval(()=>{ d+=1; if(d>=LAST){d=LAST;gStop();} state.d=d; render(); },110); }
+let gi=-1; let gGate=null;
 function gShow(i){
   gi=Math.max(0,Math.min(G_STEPS.length-1,i));
   const st=G_STEPS[gi]; stopPlay();
@@ -572,8 +572,12 @@ function gShow(i){
   const g=$('#guide'); g.classList.add('on'); document.body.classList.add('guiding');
   g.innerHTML='<div class="gs">STEP '+(gi+1)+' OF '+G_STEPS.length+'</div><h3>'+st.t+'</h3><p>'+st.x+'</p><div class="gb"><div class="dots">'+G_STEPS.map((_,k)=>'<i class="'+(k===gi?'on':'')+'"></i>').join('')+'</div><div><button class="btn" id="gX">Exit</button> <button class="btn" id="gP"'+(gi===0?' disabled':'')+'>Back</button> <button class="btn primary" id="gN">'+(gi===G_STEPS.length-1?'Finish':'Next')+'</button></div></div>';
   $('#gX').onclick=gEnd; $('#gP').onclick=()=>gShow(gi-1); $('#gN').onclick=()=>gi===G_STEPS.length-1?gEnd():gShow(gi+1);
+  if(gGate){clearInterval(gGate);gGate=null;}
+  if(st.gate){ const n=$('#gN'); n.disabled=true; n.textContent='Waiting for your decision';
+    gGate=setInterval(()=>{ if(state.log.length>0){ clearInterval(gGate);gGate=null; const gg=$('#guide'); const p=gg.querySelector('p'); if(p) p.textContent=st.after; const nb=$('#gN'); if(nb){nb.disabled=false;nb.textContent='Finish';}
+      document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl')); const lg=document.querySelector('#log'); if(lg){lg.classList.add('hl'); lg.scrollIntoView({block:'center',behavior:'smooth'});} } },250); }
 }
-function gEnd(){ gStop(); gi=-1; closeModal(); $('#guide').classList.remove('on'); document.body.classList.remove('guiding'); document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl')); state.d=LAST; state.decisions={}; state.log=[]; state.sel=null; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+function gEnd(){ gStop(); if(gGate){clearInterval(gGate);gGate=null;} gi=-1; closeModal(); $('#guide').classList.remove('on'); document.body.classList.remove('guiding'); document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl')); state.d=LAST; state.decisions={}; state.log=[]; state.sel=null; render(); window.scrollTo({top:0,behavior:'smooth'}); }
 $('#bGuide').onclick=()=>{ state.decisions={}; state.log=[]; gShow(0); };
 document.addEventListener('keydown',e=>{ if(gi<0) return; if(e.key==='ArrowRight') gShow(gi+1); if(e.key==='ArrowLeft') gShow(gi-1); });
 render();
